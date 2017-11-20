@@ -38,6 +38,30 @@ func (BasicMutators) Mutate(node ast.Node) (ast.Node, bool) {
 	return node, false
 }
 
+// // RewriteMainPackageImports rewrites the tested package ('main') to the new location
+// type RewriteMainPackageImports struct {
+// 	match, rewrite string
+// }
+//
+// func (r RewriteMainPackageImports) Mutate(node ast.Node) (ast.Node, bool) {
+// 	n, ok := node.(*ast.ImportSpec)
+// 	if !ok {
+// 		// wrong node type
+// 		return node, false
+// 	}
+//
+// 	if n.Name.Name != r.match {
+//
+// 		// import of a different module
+// 		return node, false
+// 	}
+//
+// 	fmt.Println("found!", n.Name.Name)
+// 	n.Name.Name = r.rewrite
+//
+// 	return n, true
+// }
+
 // MutateEqNeq turns == into != and vise-versa
 type MutateEqNeq struct{}
 

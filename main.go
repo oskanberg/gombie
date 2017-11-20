@@ -13,6 +13,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"golang.org/x/tools/go/ast/astutil"
+
 	"github.com/fatih/astrewrite"
 	testParser "github.com/jstemmer/go-junit-report/parser"
 )
@@ -32,6 +34,12 @@ func writeFilesToTmpDir(tmpDir string, files map[string]*ast.File, fset *token.F
 	return nil
 }
 
+func rewriteImportsInFile(fset *token.FileSet, files map[string]*ast.File, oldImport, newImport string) {
+	for _, file := range files {
+		astutil.RewriteImport(fset, file, oldImport, newImport)
+	}
+}
+
 func runTests(testMatch string, fromPath string) bool {
 	var (
 		cmdOut []byte
@@ -43,7 +51,6 @@ func runTests(testMatch string, fromPath string) bool {
 	cmd.Dir = fromPath
 
 	cmdOut, err = cmd.Output()
-	fmt.Println(err)
 	fmt.Println(string(cmdOut))
 	// TODO: read stream directly
 	_, err = testParser.Parse(bytes.NewBuffer(cmdOut), "mockpackage_test")
@@ -79,7 +86,7 @@ func RunTestsOnceWithMutator(fset *token.FileSet, targetPackage *ast.Package, te
 	}
 
 	// create temporary directory
-	tmpDir, err := ioutil.TempDir(gopath, "gombie")
+	tmpDir, err := ioutil.TempDir(gopath, "src/gombie")
 	if err != nil {
 		fmt.Println("Failed to create temporary directory:", err)
 		return false, err
@@ -88,9 +95,15 @@ func RunTestsOnceWithMutator(fset *token.FileSet, targetPackage *ast.Package, te
 	fmt.Println(tmpDir)
 	// defer os.RemoveAll(tmpDir)
 
+	// rewriteImportMutator := RewriteMainPackageImports{
+	// 	match:   targetPackage.Name,
+	// 	rewrite: tmpDir,
+	// }
+
 	// change the import(s) in test package to the new path
 
 	rewriteFunc := func(n ast.Node) (ast.Node, bool) {
+		// updatedNode, updated := rewriteImportMutator.Mutate(n)
 		updatedNode, updated := m.Mutate(n)
 		return updatedNode, !updated
 	}
@@ -103,6 +116,7 @@ func RunTestsOnceWithMutator(fset *token.FileSet, targetPackage *ast.Package, te
 		return false, err
 	}
 
+	rewriteImportsInFile(fset, testPackage.Files, "github.com/oskanberg/gombie/mockpackage", filepath.Base(tmpDir))
 	err = writeFilesToTmpDir(tmpDir, testPackage.Files, fset)
 	if err != nil {
 		return false, err
